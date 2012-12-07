@@ -248,22 +248,48 @@ class JSON_API_Post {
     $this->thumbnail = $thumbnail;
   }
   
+  
+  // Updated <code>set_custom_fields_value()</code> to retreive all fields properly
   function set_custom_fields_value() {
-    global $json_api;
-    if ($json_api->include_value('custom_fields') &&
-        $json_api->query->custom_fields) {
-      $keys = explode(',', $json_api->query->custom_fields);
-      $wp_custom_fields = get_post_custom($this->id);
-      $this->custom_fields = new stdClass();
-      foreach ($keys as $key) {
-        if (isset($wp_custom_fields[$key])) {
-          $this->custom_fields->$key = $wp_custom_fields[$key];
-        }
-      }
-    } else {
-      unset($this->custom_fields);
-    }
+  
+  	global $json_api;
+    //Copied from http://wordpress.org/support/profile/chris_mcclellan suggestion:
+    //Return all custom fields every time
+    //Original thread url: http://wordpress.org/support/topic/fixed-get-all-custom-fields-the-right-way
+    //TODO: improve and use `all` keyword to signal retrieval of all custom fields 
+    //or use the standrad way of specifying the needed fields
+  	
+    // Query string params for this query var
+  	//$params = trim($json_api->query->custom_fields);
+  	
+  	$wp_custom_fields = get_post_custom($this->id);
+  	$this->custom_fields = new stdClass();
+  
+  	// Loop through our custom fields and place on property
+  	foreach($wp_custom_fields as $key => $val) {
+  
+  		if ( $val ) {
+  
+  			// Some fields are stored as serialized arrays.
+  			// This method is not recursive. Does not support multidimensional arrays.
+  			$current_custom_field = @unserialize($val[0]);
+  
+  			if (is_array($current_custom_field)) {
+  
+  				// This item is an array - lets append it as such
+  				$this->custom_fields->$key = $current_custom_field;
+  
+  			} else {
+  
+  				// Break this value of this custom field out of its array
+  				// and place it on the json blob like usual
+  				$this->custom_fields->$key = $val[0];
+  
+  			}
+  		}
+  	}
   }
+  
   
   function get_thumbnail_size() {
     global $json_api;
